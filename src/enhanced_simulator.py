@@ -175,6 +175,25 @@ class EnhancedVoiceDiscussionSimulator:
                                      command=self.save_discussion)
         self.save_button.pack(side=tk.LEFT, padx=(0, 10))
         
+        # User input section
+        user_input_frame = ttk.LabelFrame(main_frame, text="Your Response", padding=10)
+        user_input_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Text input for user
+        ttk.Label(user_input_frame, text="Type your response:").pack(anchor=tk.W)
+        self.user_text_entry = ttk.Entry(user_input_frame, width=50)
+        self.user_text_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
+        
+        # Send text button
+        self.send_text_button = ttk.Button(user_input_frame, text="Send Text", 
+                                          command=self.send_text_response)
+        self.send_text_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Speak text button (TTS)
+        self.speak_text_button = ttk.Button(user_input_frame, text="🔊 Speak Text", 
+                                           command=self.speak_text_response)
+        self.speak_text_button.pack(side=tk.LEFT)
+        
         # Discussion display
         discussion_frame = ttk.LabelFrame(main_frame, text="Discussion", padding=10)
         discussion_frame.pack(fill=tk.BOTH, expand=True)
@@ -190,7 +209,10 @@ class EnhancedVoiceDiscussionSimulator:
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
                               relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(fill=tk.X, pady=(10, 0))
-    
+        
+        # Bind Enter key to send text
+        self.user_text_entry.bind('<Return>', lambda e: self.send_text_response())
+        
     def test_api_connection(self):
         """Test the ElevenLabs API connection"""
         api_key = self.api_key_entry.get().strip()
@@ -416,6 +438,70 @@ class EnhancedVoiceDiscussionSimulator:
             
         except Exception as e:
             self.root.after(0, lambda: self.status_var.set(f"Audio playback error: {str(e)}"))
+    
+    def send_text_response(self):
+        """Send text response from user"""
+        text = self.user_text_entry.get().strip()
+        if not text:
+            messagebox.showwarning("Warning", "Please enter some text to send")
+            return
+        
+        # Add user message to discussion
+        self.add_to_discussion("You", text)
+        
+        # Clear the input field
+        self.user_text_entry.delete(0, tk.END)
+        
+        # Generate AI response
+        self.generate_user_response(text)
+        
+        self.status_var.set("Text message sent")
+    
+    def speak_text_response(self):
+        """Convert user's text to speech and play it"""
+        text = self.user_text_entry.get().strip()
+        if not text:
+            messagebox.showwarning("Warning", "Please enter some text to speak")
+            return
+        
+        # Add user message to discussion
+        self.add_to_discussion("You", text)
+        
+        # Generate and play TTS for user message
+        self.play_user_tts(text)
+        
+        # Clear the input field
+        self.user_text_entry.delete(0, tk.END)
+        
+        # Generate AI response
+        self.generate_user_response(text)
+        
+        self.status_var.set("Text spoken and sent")
+    
+    def play_user_tts(self, text: str):
+        """Play TTS for user message using a default voice"""
+        try:
+            # Use the first available character voice for user TTS
+            default_voice_id = self.characters['Alex']['voice_id']
+            
+            # Generate audio using ElevenLabs
+            audio = generate(
+                text=text,
+                voice=default_voice_id,
+                model="eleven_monolingual_v1"
+            )
+            
+            # Save to temporary file and play
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+                temp_file.write(audio)
+                temp_filename = temp_file.name
+            
+            # Play audio in separate thread
+            threading.Thread(target=self._play_audio_file, 
+                           args=(temp_filename,), daemon=True).start()
+            
+        except Exception as e:
+            self.root.after(0, lambda: self.status_var.set(f"User TTS error: {str(e)}"))
     
     def toggle_recording(self):
         """Toggle voice recording for user input"""
