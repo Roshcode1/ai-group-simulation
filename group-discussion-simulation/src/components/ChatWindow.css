@@ -1,0 +1,20 @@
+.chat-window {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  height: 400px;
+  overflow-y: scroll;
+  margin-bottom: 20px;
+}
+
+.message {
+  margin-bottom: 10px;
+}
+
+.message.user {
+  text-align: right;
+}
+
+.message-sender {
+  font-weight: bold;
+}
